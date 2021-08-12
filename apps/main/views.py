@@ -1,14 +1,15 @@
-from django.shortcuts import get_object_or_404
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-from django.db.models.signals import pre_save
-from rest_framework import viewsets
-from . import serializers, models
 import random
 import string
 
+from django.db.models.signals import pre_save
+from django.shortcuts import get_object_or_404
+from rest_framework import viewsets
 from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from . import models, serializers
 from .errors import InsufficientBalance
 
 
@@ -36,6 +37,7 @@ class TrackerViewSet(viewsets.ModelViewSet):
 
 
 class WalletDepositView(APIView):
+    """this view should be used to deposit funds to a users wallet"""
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk, amount):
@@ -45,6 +47,7 @@ class WalletDepositView(APIView):
 
 
 class WalletWithrawView(APIView):
+    """this view should be used to withdraw funds from wallet"""
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, pk, amount):
@@ -62,10 +65,8 @@ class TranserView(APIView):
     permission_classes = (IsAuthenticated,)
 
     def post(self, request, amount):
-        owner_wallet = models.Wallet.objects.filter(
-            user=request.data['owner']).first()
-        carrier_wallet = models.Wallet.objects.filter(
-            user=request.data['carrier']).first()
+        owner_wallet = models.Wallet.objects.filter(user=request.data['owner']).first()
+        carrier_wallet = models.Wallet.objects.filter(user=request.data['carrier']).first()
         try:
             owner_wallet.transfer(carrier_wallet, amount)
             return Response({'message': 'transer successfull'})
@@ -73,8 +74,8 @@ class TranserView(APIView):
             return Response({'message': 'insufficient balance'}, status=400)
 
 
-# signal to initialize a new tracker anythime the a package instance is saved
 def create_package_tracker(sender, instance, **kwargs):
+    """signal to initialize a new tracker anythime the a package instance is saved"""
     if not sender.objects.filter(id=instance.id).exists():
         pin = generate_pin()
         instance.security_code = pin
@@ -83,13 +84,11 @@ def create_package_tracker(sender, instance, **kwargs):
         instance.tracker = tracker
 
 
-pre_save.connect(receiver=create_package_tracker,
-                 sender=models.Package, dispatch_uid='create_package_tracker')
-
-# generates pin for each new package being added
+pre_save.connect(receiver=create_package_tracker, sender=models.Package, dispatch_uid='create_package_tracker')
 
 
 def generate_pin():
+    """ generates pin for each new package being added to the database"""
     digits = string.digits
     pin = ''.join(random.choice(digits) for i in range(5))
     return pin

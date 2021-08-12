@@ -1,6 +1,6 @@
 from django.db import models
 from django.shortcuts import reverse
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.models import AbstractUser
 
 
@@ -17,19 +17,19 @@ class CustomUser(AbstractUser):
                        'username',  'phone_number', 'address']
 
     def __str__(self):
-        return self.username
+        return f'<User {self.username}>'
 
 
-# moved user verification model from main to account cause it is concerned with the account
 class UserVerification(models.Model):
+    # A user must have a UserVerification in order to be verified
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='verification')
     NIN = models.CharField(_("National Identification Number"), max_length=20)
     BVN = models.CharField(_("Bank Verification Number"), max_length=20)
     upload_id = models.ImageField(_("upload id"), upload_to='ids/')
-    id_type=models.CharField(_("type of ID"), max_length=500)
+    id_type = models.CharField(_("type of ID"), max_length=500)
     bank_name = models.CharField(_("bank name"), max_length=50)
-    account_number = models.CharField( _("bank account number"), max_length=20)
-    account_name=models.CharField(_("bank account name"), max_length=50)
+    account_number = models.CharField(_("bank account number"), max_length=20)
+    account_name = models.CharField(_("bank account name"), max_length=50)
 
     class Meta:
 
@@ -42,5 +42,4 @@ class UserVerification(models.Model):
         return f'{self.user}\'s verification '
 
     def get_absolute_url(self):
-        # Edited according to the new url config
         return reverse("user-verify", kwargs={"pk": self.pk})

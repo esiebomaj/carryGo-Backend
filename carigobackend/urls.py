@@ -10,8 +10,9 @@ urlpatterns = [
     path('api/v1/', include('main.urls')),
     path('api/v1/accounts/', include('accounts.urls')),
 
+     # Generic email confirmation path to bypass email confirmation for now
     re_path(r'^account-confirm-email/(?P<key>[-:\w]+)/$', TemplateView.as_view(),
-            name='account_confirm_email'),  # Generic email confirmation path to bypass email cnfirmation for now
+            name='account_confirm_email'), 
 
 ]
 

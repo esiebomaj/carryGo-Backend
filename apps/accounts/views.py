@@ -5,7 +5,6 @@ from rest_framework.permissions import IsAuthenticated
 from main.models import Wallet
 
 
-
 class UserDetailsViewset(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
     serializer_class = serializers.UserDetailsSerializer
@@ -19,17 +18,14 @@ class UserVerificationViewset(viewsets.ModelViewSet):
     queryset = models.UserVerification.objects.all()
 
 
-
 # signal to create user's wallet when a CustomUser model instance is saved
 def create_wallet(sender, instance, created, **kwargs):
     if created:
-        wallet=Wallet(user=instance)
+        wallet = Wallet(user=instance)
         wallet.save()
 
-post_save.connect(receiver=create_wallet,
-                 sender=models.CustomUser, dispatch_uid='create_wallet')
 
-
+post_save.connect(receiver=create_wallet, sender=models.CustomUser, dispatch_uid='create_wallet')
 
 
 # signal to verify user when a UserVerificaton model instance is saved
@@ -40,5 +36,4 @@ def verify_user(sender, instance, **kwargs):
         user.save()
 
 
-pre_save.connect(receiver=verify_user,
-                 sender=models.UserVerification, dispatch_uid='verify_user')
+pre_save.connect(receiver=verify_user, sender=models.UserVerification, dispatch_uid='verify_user')

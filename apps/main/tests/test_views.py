@@ -1,42 +1,82 @@
+import datetime
+
+from accounts.models import CustomUser
+from django.shortcuts import reverse
+from main.models import Package, Wallet
 from rest_framework import status
 from rest_framework.test import APITestCase
-from django.shortcuts import reverse
-import datetime
-from ..import models
 
-# Create your tests here.
 
 class PackageTestCase(APITestCase):
-    def createUser(self, data):
-        url = reverse('accounts:rest_register')
-        registerResponse = self.client.post(url, data, format='json')
-        print(registerResponse.data)
+    def setUp(self):
+        self.user1 = CustomUser.objects.create_user(
+            username="john", email="john@gmail.com", password='s3r3n1ty',)
+        self.user = CustomUser.objects.create_user(
+            username="john1", email="john1@gmail.com", password='s3r3n1ty',)
+        self.client.login(username='john1@gmail.com', password='s3r3n1ty')
 
-        self.assertEqual(registerResponse.status_code, status.HTTP_201_CREATED)
-        self.assertIn('refresh_token', registerResponse.data)
-        self.assertIn('access_token', registerResponse.data)
-        return registerResponse
-
-    def test_packagecreate(self):
-        userData = {'username': "Tundeednut", 'email': "tundeednut@gmail.com", 'password1': 's3r3n1ty', 'password2': 's3r3n1ty', 'first_name': 'Tunde', 'last_name': "Balogun", 'phone_number': '08167467782', 'address': '2, Cole Street Collins Road, Ikeja, Lagos'}
-        carrierData = {'username': "d3l1v3r", 'email': "crazyrider@gmail.com", 'password1': 'cr4zyr1d3r', 'password2': 'cr4zyr1d3r', 'first_name': 'Gaius', 'last_name': "Sinclair", 'phone_number': '08144455288', 'address': '3, Kraken Street, Masha Ave, Surulere, Lagos'}
-        userID = self.createUser(userData).data['user']['pk']
-        carrierID = self.createUser(carrierData).data['user']['pk']
+    def test_package_create(self):
+        """Test that a package can be created successfully"""
         url = reverse("core:packages-list")
         packageData = {
             'name': 'Hp Pavillion Laptop',
-            'weight': 36,
-            'category': 'OTHER',
             'price': 10000,
-            'pick_location': 'Lagos',
-            'dest_location': 'Abuja',
-            'delivered_on': str(datetime.datetime.now()+datetime.timedelta(days=2)),
-            'description': "Highly fragile package needed to be delivered in perfect condition to the stated address: 2, Sumonu Street, Wuse zone, Abuja",
-            'owner': userID,
-            'carrier': carrierID
+            'origin': 'Lagos',
+            'destination': 'Abuja',
+            'owner': self.user.id,
+            'carrier': self.user1.id
         }
         response = self.client.post(url, packageData, format='json')
-        print(response.data, response.status_code)
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(len(models.Package.objects.all()), 1)
+        self.assertEqual(len(Package.objects.all()), 1)
+        # test that security pin was properlly generated
+        self.assertEqual(len(Package.objects.first().security_code), 5)
+
+
+class WalletTestCase(APITestCase):
+    def setUp(self):
+        self.user1 = CustomUser.objects.create_user(
+            username="john", email="john@gmail.com", password='s3r3n1ty',)
+        self.user = CustomUser.objects.create_user(
+            username="john1", email="john1@gmail.com", password='s3r3n1ty',)
+        self.client.login(username='john1@gmail.com', password='s3r3n1ty')
+        self.user.wallet.deposit(4000)
+
+    def test_deposit(self):
+        """Test that a user can make deposit"""
+        url = reverse("core:deposit", kwargs={"pk": 2, "amount": "2000"})
+        response = self.client.post(url, format='json')
+        wallet = Wallet.objects.get(pk=2)
+
+        self.assertEqual(response.data["message"], 'deposit successfull')
+        self.assertEqual(wallet.current_balance, 6000.0)
+
+    def test_withdraw_insufficient_balance(self):
+        """Test that a user can't withdraw with an insufficient balance"""
+        url = reverse("core:withdraw", kwargs={"pk": 2, "amount": "8000"})
+        response = self.client.post(url, format='json')
+        wallet = Wallet.objects.get(pk=2)
+
+        self.assertEqual(response.data["message"], 'insufficient balance')
+        self.assertEqual(wallet.current_balance, 4000.0)
+
+    def test_withdraw(self):
+        """Test that a user can withdraw with a sufficient balance"""
+        url = reverse("core:withdraw", kwargs={"pk": 2, "amount": "2000"})
+        response = self.client.post(url, format='json')
+        wallet = Wallet.objects.get(pk=2)
+
+        self.assertEqual(response.data["message"], 'withdraw successfull')
+        self.assertEqual(wallet.current_balance, 2000.0)
+
+    def test_transfer(self):
+        """Test that transfer can be made from one user to another"""
+        url = reverse("core:transfer", kwargs={"amount": "2000"})
+        data = {"owner": self.user.id, "carrier": self.user1.id}
+        response = self.client.post(url, data, format='json')
+
+        wallet = Wallet.objects.get(pk=2)
+
+        self.assertEqual(response.data["message"], 'transer successfull')
+        self.assertEqual(wallet.current_balance, 2000.0)

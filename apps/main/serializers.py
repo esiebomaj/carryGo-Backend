@@ -5,7 +5,7 @@ from . import models
 class TrackerSerializer(ModelSerializer):
     class Meta:
         model = models.Tracker
-        fields = '__all__'
+        fields = ['is_confirmed', 'in_transit', 'is_delivered', ]
 
 
 class PackageSerializer(ModelSerializer):
@@ -16,8 +16,7 @@ class PackageSerializer(ModelSerializer):
         fields = '__all__'
 
 
-# serializers for wallet and transaction models 
-
+# serializers for wallet and transaction models
 class TransactionSerializer(ModelSerializer):
     class Meta:
         model = models.Transaction
@@ -25,7 +24,8 @@ class TransactionSerializer(ModelSerializer):
 
 
 class WalletSerializer(ModelSerializer):
-    transactions=TransactionSerializer(many=True, read_only=True)
+    transactions = TransactionSerializer(many=True, read_only=True)
+
     class Meta:
         model = models.Wallet
         fields = ['id', 'user', 'current_balance', 'transactions']
